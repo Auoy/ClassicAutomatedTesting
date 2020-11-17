@@ -168,9 +168,9 @@ public class TestSelectByClass {
         //selector.makeDotFile(by);
         selector.select(changeInfo[choose], by);
 
-        System.out.println("expect:");
         ArrayList<String> ans = Support.trim(Support.readTxt(classAns[choose]));
         Collections.sort(ans);
+        System.out.println("expect: " + ans.size());
         for (String s : ans) {
             System.out.println(s);  //打印正确结果
         }

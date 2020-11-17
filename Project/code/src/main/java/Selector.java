@@ -1,4 +1,6 @@
 import com.ibm.wala.classLoader.CallSiteReference;
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.ShrikeBTMethod;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -23,6 +25,7 @@ class Selector {
     private static class Class {
         String name;
         ArrayList<Class> pres = new ArrayList<>();  //前驱，即调用该类中方法的方法所在的类
+        ArrayList<String> declaredMtds = new ArrayList<>();  //存该类和该类的父类中声明的所有方法的签名
 
         Class(String name) {
             this.name = name;
@@ -94,20 +97,26 @@ class Selector {
                 //node.getMethod()返回一个比较泛化的IMethod实例，不能获取到我们想要的信息
                 //一般地，本项目中所有业务逻辑相关的方法都是ShrikeBTMethod对象
                 ShrikeBTMethod method = (ShrikeBTMethod) node.getMethod();
+                //获取该类和该类的父类中声明的全部方法
+                Collection<? extends IMethod> imethods = method.getDeclaringClass().getAllMethods();
                 //使用Primordial类加载器加载的类都属于Java原生类，我们一般不关心
                 if ("Application".equals(method.getDeclaringClass().getClassLoader().toString())) {
+
                     //获取声明该方法的类的内部表示
                     String classInnerName = method.getDeclaringClass().getName().toString();
                     //获取方法签名
                     String signature = method.getSignature();
                     //向方法集合和类集合中添加该方法和其所属类
                     if (!classInnerName.contains("$")) {
-                        if (signature.startsWith("net.mooctest.") && findThisMethod(signature) == -1) {
-                            AllMethods.add(new Method(classInnerName, signature));
-                        }
+                        //获取父类，无则为null
                         if (classInnerName.startsWith("Lnet/mooctest/") && findThisClass(classInnerName) == -1) {
                             AllClasses.add(new Class(classInnerName));
                         }
+                        if (signature.startsWith("net.mooctest.") && findThisMethod(signature) == -1) {
+                            AllMethods.add(new Method(classInnerName, signature));
+                        }
+                        Class c = AllClasses.get(findThisClass(classInnerName));
+                        c.declaredMtds = removeOverrided(c.name, imethods);
                     }
                     //获取该方法所调用的方法，并添加
                     Collection<CallSiteReference> callSites = method.getCallSites();
@@ -196,12 +205,23 @@ class Selector {
      */
     void select(String changeInfo, String by) {
         ArrayList<String> info = readChangeInfoTxt(changeInfo);  //读取到的变更信息
+
         for (String item : info) {
             String clsName = item.split(" ")[0];
             String mtdSig = item.split(" ")[1];
 
             //观察发现，按方法粒度选择结果是按类粒度选择结果的子集
             selectByMethod(mtdSig);  //按方法粒度选一遍
+
+            for (Class c : AllClasses) {
+                if (c.declaredMtds.contains(mtdSig) && !c.name.equals(clsName)) {
+                    String subClsName = getClsName(c.name);
+                    String superClsName = getClsName(clsName);
+                    String subCall = mtdSig.replace(superClsName, subClsName);
+                    selectByMethod(subCall);
+                }
+            }
+
             if (by.equals("-c")) {
                 for (String s : selectResByMethod) {  //同步选择结果
                     if (!selectResByClass.contains(s)) {
@@ -250,8 +270,27 @@ class Selector {
         }
     }
 
-    void makeSelectFile() {
-        //todo
+    /**
+     * 输出选择结果 txt文件
+     */
+    void makeSelectFile(String by) throws FileNotFoundException {
+        StringBuilder res = new StringBuilder();
+        String txtName;
+        if (by.equals("-m")) {
+            txtName = "selection-method.txt";
+            for (String s : selectResByMethod) {
+                res.append(s).append("\n");
+            }
+        } else {
+            txtName = "selection-class.txt";
+            for (String s : selectResByClass) {
+                res.append(s).append("\n");
+            }
+        }
+        File fp = new File(txtName);
+        PrintWriter pfp = new PrintWriter(fp);
+        pfp.print(res.toString());
+        pfp.close();
     }
 
     /**
@@ -312,6 +351,50 @@ class Selector {
             }
         }
         return -1;
+    }
+
+    /**
+     * 加入本类中和其父类中声明的方法的签名，不包括已经被重写的父类方法版本签名
+     *
+     * @param curClassName
+     * @param mtds
+     * @return
+     */
+    private ArrayList<String> removeOverrided(String curClassName, Collection<? extends IMethod> mtds) {
+        ArrayList<String> res = new ArrayList<>();
+        for (IMethod m : mtds) {
+            if (m.getSignature().startsWith("net.mooctest.")) {
+                if (m.getDeclaringClass().getName().toString().equals(curClassName)) {
+                    res.add(m.getSignature());
+                } else {
+                    String name = getMtdName(m.getDeclaringClass().getName().toString(), m.getSignature());
+                    boolean has = false;
+                    for (String tmp : res) {
+                        if (tmp.contains(name)) {
+                            has = true;
+                            break;
+                        }
+                    }
+                    if (!has) {
+                        res.add(m.getSignature());
+                    }
+                }
+            }
+        }
+        return res;
+    }
+
+    //从类的声明里获得类名
+    private String getClsName(String classInnerName) {
+        String cPrefix = "Lnet/mooctest/";
+        return classInnerName.substring(cPrefix.length());
+    }
+
+    //从方法签名里获得方法名
+    private String getMtdName(String classInnerName, String methodSig) {
+        String mPrifix = "net.mooctest.";
+        String cName = getClsName(classInnerName);
+        return methodSig.substring(mPrifix.length() + cName.length());
     }
 
 }

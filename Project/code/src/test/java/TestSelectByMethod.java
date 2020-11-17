@@ -98,10 +98,32 @@ public class TestSelectByMethod {
         //selector.makeDotFile(by);
         selector.select(changeInfo[choose], by);
 
+        System.out.println("expect:");
         ArrayList<String> ans = Support.trim(Support.readTxt(methodAns[choose]));
         Collections.sort(ans);
-
-        Support.printRes(ans, selector.selectResByMethod);  //打印
+        for (String s : ans) {
+            System.out.println(s);  //打印正确结果
+        }
+        System.out.println("---------------------------------------------------------------");
+        System.out.println("actual:");
+        for (String s : selector.selectResByMethod) {
+            System.out.println(s);  //打印所得结果
+        }
+        System.out.println("=========================================================================================");
+        System.out.println("不同部分：");
+        System.out.println("ans:");
+        for (String s : ans) {
+            if (!selector.selectResByMethod.contains(s)) {
+                System.out.println(s);
+            }
+        }
+        System.out.println("---------------------------------------------------------------");
+        System.out.println("select:");
+        for (String s : selector.selectResByMethod) {
+            if (!ans.contains(s)) {
+                System.out.println(s);
+            }
+        }
 
         Assert.assertEquals(ans.size(), selector.selectResByMethod.size());  //先判断个数
         for (int i = 0; i < ans.size(); i++) {
