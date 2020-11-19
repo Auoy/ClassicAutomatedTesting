@@ -55,8 +55,8 @@ class Selector {
      */
     void prepare(String projectTarget) throws InvalidClassFileException, IOException, WalaException, CancelException {
 
-        String scopePath = "E:\\大三上\\自动化测试\\代码作业-11.21ddl\\ClassicAutomatedTesting\\Project\\code\\src\\main\\resources\\scope.txt";
-        String exPath = "E:\\大三上\\自动化测试\\代码作业-11.21ddl\\ClassicAutomatedTesting\\Project\\code\\src\\main\\resources\\exclusion.txt";
+        String scopePath = "scope.txt";
+        String exPath = "exclusion.txt";
 
         ClassLoader classLoader = Selector.class.getClassLoader();
         AnalysisScope scope = AnalysisScopeReader.readJavaScope(scopePath, new File(exPath), classLoader);
@@ -157,7 +157,7 @@ class Selector {
     }
 
     /**
-     * 生成并输出.doc文件
+     * 生成并输出.dot文件
      *
      * @throws IOException
      */
@@ -236,14 +236,16 @@ class Selector {
     }
 
     private void selectByMethod(String sig) {
-        Method mtd = AllMethods.get(findThisMethod(sig));
-        for (Method caller : mtd.callers) {
-            String tmp = caller.belong + " " + caller.signature;
-            if (caller.belong.contains("Test") && !caller.signature.contains("<init>") && !selectResByMethod.contains(tmp)) {
-                selectResByMethod.add(tmp);
-            } else {
-                if (!caller.signature.equals(sig)) {  //避免因被分析方法有递归依赖情况而导致此处无限递归栈溢出
-                    selectByMethod(caller.signature);
+        if (findThisMethod(sig) != -1) {
+            Method mtd = AllMethods.get(findThisMethod(sig));
+            for (Method caller : mtd.callers) {
+                String tmp = caller.belong + " " + caller.signature;
+                if (caller.belong.contains("Test") && !caller.signature.contains("<init>") && !selectResByMethod.contains(tmp)) {
+                    selectResByMethod.add(tmp);
+                } else {
+                    if (!caller.signature.equals(sig)) {  //避免因被分析方法有递归依赖情况而导致此处无限递归栈溢出
+                        selectByMethod(caller.signature);
+                    }
                 }
             }
         }

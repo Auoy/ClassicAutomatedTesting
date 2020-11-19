@@ -8,7 +8,7 @@ class Main {
 
     public static void main(String[] args) throws CancelException, WalaException, InvalidClassFileException, IOException {
 //        String[] cases = {"0-CMD", "1-ALU", "2-DataLog", "3-BinaryHeap", "4-NextDay", "5-MoreTriangle"};
-//        int choose = 4;
+//        int choose = 1;
 //
 //        //粒度
 //        String by = "-m";
@@ -19,15 +19,18 @@ class Main {
 //        //按方法粒度选择结果
 //        String methodAns = "E:\\大三上\\自动化测试\\代码作业-11.21ddl\\Cases\\" + cases[choose] + "\\data\\selection-method.txt";
 
-        String by = args[3];
-        String projectTarget = args[4];
-        String changeInfo = args[5];
+        String by = args[0];
+        String projectTarget = args[1];
+        String changeInfo = args[2];
 
         Selector selector = new Selector();
         selector.prepare(projectTarget);
         selector.select(changeInfo, by);
 //        selector.makeDotFile();
         selector.makeSelectFile(by);
+        System.out.println(by);
+        System.out.println(projectTarget);
+        System.out.println(changeInfo);
     }
 
 }
