@@ -108,7 +108,6 @@ class Selector {
                     String signature = method.getSignature();
                     //向方法集合和类集合中添加该方法和其所属类
                     if (!classInnerName.contains("$")) {
-                        //获取父类，无则为null
                         if (classInnerName.startsWith("Lnet/mooctest/") && findThisClass(classInnerName) == -1) {
                             AllClasses.add(new Class(classInnerName));
                         }
